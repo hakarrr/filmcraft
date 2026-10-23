@@ -104,13 +104,13 @@ struct ClipRef<'a> {
     clip: &'a TrackItem,
 }
 
-fn clips(project: &Project) -> BTreeMap<ClipId, ClipRef<'_>> {
+fn clips(project: &Project) -> BTreeMap<(ItemId, ClipId), ClipRef<'_>> {
     let mut result = BTreeMap::new();
     for item in project.items.values() {
         if let Some(sequence) = item.as_sequence() {
             for track in sequence.all_tracks() {
                 for clip in &track.items {
-                    result.insert(clip.id, ClipRef { sequence: item.id, track: track.id, clip });
+                    result.insert((item.id, clip.id), ClipRef { sequence: item.id, track: track.id, clip });
                 }
             }
         }
@@ -245,7 +245,7 @@ fn describe(index: usize, label: &str, before: &Project, after: &Project) -> Val
     for id in ids {
         let (a, b) = (a_clips.get(&id), b_clips.get(&id));
         let fields = match (a, b) {
-            (Some(x), Some(y)) if x.sequence == y.sequence && x.track == y.track && same(x.clip, y.clip) => continue,
+            (Some(x), Some(y)) if x.track == y.track && same(x.clip, y.clip) => continue,
             (Some(x), Some(y)) => clip_fields(x, y),
             _ => Vec::new(),
         };
@@ -256,7 +256,7 @@ fn describe(index: usize, label: &str, before: &Project, after: &Project) -> Val
                 (_, None) => "removed",
                 _ => "changed",
             };
-            changes.push(json!({"id": id.0, "change": status, "fields": fields,
+            changes.push(json!({"id": id.1.0, "sequence": id.0.0, "change": status, "fields": fields,
                 "before": a.map(clip_json), "after": b.map(clip_json),
                 "effects": effect_changes(a.map(|c| c.clip), b.map(|c| c.clip))}));
         }
@@ -299,6 +299,74 @@ mod tests {
             Ok(())
         })
         .unwrap();
+    }
+
+    #[test]
+    fn duplicated_sequence_keeps_both_clip_namespaces_visible() {
+        let mut s = demo();
+        let original = s.state.active_sequence.unwrap();
+        let clip = first_clip(&s);
+        let original_count = s.active_sequence().unwrap().all_tracks().map(|t| t.items.len()).sum::<usize>();
+        s.state.project_selection = vec![original];
+        let duplicated = s.execute("edit.duplicate", json!({})).unwrap();
+        let copy = ItemId(duplicated["items"][0].as_u64().unwrap());
+        assert_eq!(s.project.sequence(copy).unwrap().video_tracks[0].items[0].id, clip);
+        let d = detail(&mut s);
+        let entry = &d["details"]["undo"][0];
+        assert_eq!(entry["clipCount"], original_count);
+        assert!(entry["clips"].as_array().unwrap().iter().all(|c| c["change"] == "added" && c["after"]["sequence"] == copy.0));
+        s.history = History { limit: 200, ..Default::default() };
+        change(&mut s, "Trim original", 17);
+        let d = detail(&mut s);
+        let entry = &d["details"]["undo"][0];
+        assert_eq!(entry["clipCount"], 1);
+        assert_eq!(entry["clips"][0]["id"], clip.0);
+        assert_eq!(entry["clips"][0]["before"]["sequence"], original.0);
+        assert_eq!(entry["clips"][0]["fields"], json!(["sourceIn"]));
+    }
+
+    #[test]
+    fn duplicate_sequence_removal_and_redo_keep_original_clips() {
+        let mut s = demo();
+        let original = s.state.active_sequence.unwrap();
+        s.state.project_selection = vec![original];
+        let r = s.execute("edit.duplicate", json!({})).unwrap();
+        let copy = ItemId(r["items"][0].as_u64().unwrap());
+        s.history = History { limit: 200, ..Default::default() };
+        s.edit("Remove copied clips", |p, _| {
+            p.sequence_mut(copy).unwrap().video_tracks[0].items.clear();
+            Ok(())
+        })
+        .unwrap();
+        let before = detail(&mut s)["details"]["undo"][0].clone();
+        assert!(before["clipCount"].as_u64().unwrap() > 0);
+        assert!(before["clips"].as_array().unwrap().iter().all(|c| c["sequence"] == copy.0 && c["change"] == "removed"));
+        s.undo().unwrap();
+        assert_eq!(detail(&mut s)["details"]["redo"][0], before);
+        s.redo().unwrap();
+        assert_eq!(detail(&mut s)["details"]["undo"][0], before);
+        assert!(!s.project.sequence(original).unwrap().video_tracks[0].items.is_empty());
+    }
+
+    #[test]
+    fn cross_sequence_transfer_reports_two_sequence_scoped_changes() {
+        let mut s = demo();
+        let original = s.state.active_sequence.unwrap();
+        let id = first_clip(&s);
+        s.edit("Transfer", |p, _| {
+            let other = p.new_sequence("Destination", Default::default(), 1, 0, None);
+            let clip = p.sequence_mut(original).unwrap().video_tracks[0].items.remove(0);
+            p.sequence_mut(other).unwrap().video_tracks[0].items.push(clip);
+            Ok(())
+        })
+        .unwrap();
+        let d = detail(&mut s);
+        let e = &d["details"]["undo"][0];
+        assert_eq!(e["clipCount"], 2);
+        let c = e["clips"].as_array().unwrap();
+        assert!(c.iter().all(|c| c["id"] == id.0));
+        assert!(c.iter().any(|c| c["sequence"] == original.0 && c["change"] == "removed"));
+        assert!(c.iter().any(|c| c["sequence"] != original.0 && c["change"] == "added"));
     }
 
     #[test]
