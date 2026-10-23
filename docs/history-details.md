@@ -18,13 +18,13 @@ Each entry has:
 - `index`: position in its label stack, not a persistent event id.
 - `label`: the undo label, shortened if necessary.
 - `items`: changed project-item ids, added/removed/changed status, and old/new display names.
-- `clips`: changed timeline-clip ids, status, changed field names, and before/after summaries.
+- `clips`: changed timeline-clip ids, their sequence ids, status, changed field names, and before/after summaries.
 - `itemCount`, `clipCount`, `itemsOmitted`, `clipsOmitted`: totals and explicit truncation.
 - `binsChanged`: whether the bin tree differs.
 
 A clip summary identifies the source item, sequence and track, plus exact integer ticks for
 `start`, `duration` and `sourceIn`. It includes speed, reverse, enabled state and audio routing.
-A move retains one clip identity with different track ids. An added clip has no `before`;
+Clip identity is scoped to its sequence: duplicating a sequence can retain its clip ids. A move between tracks within one sequence retains one clip identity with different track ids; a transfer between sequences is a removal and an addition. An added clip has no `before`;
 a removed clip has no `after`. Effects carry their stack index, old/new ids and enabled states,
 and changed parameter ids. Numeric, boolean and choice parameters expose their before/after
 values. Structured or text values are summarized, and animation reports keyframe counts
