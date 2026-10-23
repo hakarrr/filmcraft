@@ -45,6 +45,13 @@ jobs:
           git apply --check /tmp/history.patch
           git apply /tmp/history.patch
 
+      - name: Apply separately approved baseline hardware-test isolation patch
+        run: |
+          echo LS0tIGEvY3JhdGVzL2VuZ2luZS9zcmMvc2V0dGluZ3NfdGVzdHMucnMKKysrIGIvY3JhdGVzL2VuZ2luZS9zcmMvc2V0dGluZ3NfdGVzdHMucnMKQEAgLTU3NCw2ICs1NzQsMTggQEAKIAogI1t0ZXN0XQogZm4gaGFyZHdhcmVfZGVjb2Rpbmdfc2V0dGluZ19kcml2ZXNfdGhlX2RlY29kZXJfc3dpdGNoKCkgeworICAgIC8vIFByZWZlcmVuY2UgY2hhbmdlcyBpbiBvdGhlciB0ZXN0cyB1cGRhdGUgdGhlIHNhbWUgcHJvY2Vzcy13aWRlIGRlY29kZXIgc3dpdGNoLgorICAgIC8vIEV4ZXJjaXNlIHRoaXMgYXNzZXJ0aW9uIGFsb25lIGluIGEgY2hpbGQsIHdpdGhvdXQgc2VyaWFsaXppbmcgdW5yZWxhdGVkIHRlc3RzLgorICAgIGNvbnN0IENISUxEOiAmc3RyID0gIkZJTE1DUkFGVF9IV19TRVRUSU5HX1RFU1RfQ0hJTEQiOworICAgIGlmIHN0ZDo6ZW52Ojp2YXJfb3MoQ0hJTEQpLmlzX25vbmUoKSB7CisgICAgICAgIGxldCBzdGF0dXMgPSBzdGQ6OnByb2Nlc3M6OkNvbW1hbmQ6Om5ldyhzdGQ6OmVudjo6Y3VycmVudF9leGUoKS5leHBlY3QoInRlc3QgZXhlY3V0YWJsZSIpKQorICAgICAgICAgICAgLmFyZ3MoWyItLWV4YWN0IiwgInNldHRpbmdzX3Rlc3RzOjpoYXJkd2FyZV9kZWNvZGluZ19zZXR0aW5nX2RyaXZlc190aGVfZGVjb2Rlcl9zd2l0Y2giLCAiLS1ub2NhcHR1cmUiXSkKKyAgICAgICAgICAgIC5lbnYoQ0hJTEQsICIxIikKKyAgICAgICAgICAgIC5zdGF0dXMoKQorICAgICAgICAgICAgLmV4cGVjdCgiaXNvbGF0ZWQgaGFyZHdhcmUgc2V0dGluZyB0ZXN0Iik7CisgICAgICAgIGFzc2VydCEoc3RhdHVzLnN1Y2Nlc3MoKSwgImlzb2xhdGVkIGhhcmR3YXJlIHNldHRpbmcgdGVzdCBmYWlsZWQiKTsKKyAgICAgICAgcmV0dXJuOworICAgIH0KICAgICBsZXQgbXV0IHMgPSBTZXNzaW9uOjpkZWZhdWx0KCk7CiAgICAgYXNzZXJ0X2VxIShzLnByZWZzLnBsYXliYWNrLmhhcmR3YXJlX2RlY29kaW5nLCAiYXV0byIsICJBdXRvIGJ5IGRlZmF1bHQiKTsKICAgICBzZXQoJm11dCBzLCAicGxheWJhY2suaGFyZHdhcmVEZWNvZGluZyIsIGpzb24hKCJvZmYiKSk7Cg== | base64 --decode > /tmp/hardware-setting-isolation.patch
+          echo '0cb9085d2c5c256a0c2ac3ff9c32783f40790ab5d8764fc310ad0a8dbf5cc0a1  /tmp/hardware-setting-isolation.patch' | sha256sum --check
+          git apply --check /tmp/hardware-setting-isolation.patch
+          git apply /tmp/hardware-setting-isolation.patch
+
       - name: Check out craft-fonts
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
