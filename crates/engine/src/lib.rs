@@ -735,7 +735,7 @@ impl Session {
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (spec.run)(self, &params)))
             .unwrap_or_else(|_| Err(EngineError::Other(format!("internal error in `{id}` (see the crash log); the command did not complete"))));
         self.exec_depth -= 1;
-        if self.exec_depth == 0 {
+        if self.exec_depth == 0 && spec.journal {
             source_monitor::track_history(self);
         }
         // source graphics: an edited instance updates the shared layers and the other instances
