@@ -523,6 +523,26 @@ mod tests {
     }
 
     #[test]
+    fn history_query_preserves_source_recent_clip_order_after_direct_edit() {
+        let mut s = demo();
+        let ids: Vec<_> = s.project.items.keys().copied().take(2).collect();
+        assert_eq!(ids.len(), 2);
+        s.edit("Set source state", |_, state| {
+            state.source_item = Some(ids[0]);
+            state.source_history = vec![ids[1], ids[0]];
+            Ok(())
+        })
+        .unwrap();
+        let before = s.state.source_history.clone();
+        for params in [json!({}), json!({"detail": true}), json!({"limit": 0})] {
+            let _ = s.execute("history.list", params);
+            assert_eq!(s.state.source_history, before);
+        }
+        s.execute("source.open", json!({"item": ids[0].0})).unwrap();
+        assert_eq!(s.state.source_history, vec![ids[0], ids[1]]);
+    }
+
+    #[test]
     fn read_only_query_preserves_project_revision_journal_and_history() {
         let mut s = demo();
         change(&mut s, "Trim", 1);
